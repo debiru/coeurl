@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cubic Bezier Easing Visualizer</title>
   <meta name="description" content="3次ベジェ曲線をヴィジュアライズします">
+  <meta property="og:url" content="https://cubic-bezier.lavoscore.org/">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://cubic-bezier.lavoscore.org/og.png">
+  <meta name="twitter:card" content="summary_large_image">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Zen+Maru+Gothic&display=swap');
     :root {
@@ -204,12 +208,12 @@
     <div class="workspace">
       <section class="panel list-panel">
         <div class="section-heading">
-          <h2 id="list-title">イージング一覧 <span id="count" class="muted"></span></h2>
+          <h2 id="list-title">イージング関数一覧 <span id="count" class="muted"></span></h2>
           <div class="list-tools">
             <details id="json-editor">
               <summary>関数一覧を編集（JSON）</summary>
               <p class="muted"><code>{ "名前": [x1, y1, x2, y2] }</code> 形式。記述順に番号を付けて表示します。</p>
-              <label for="definitions" class="muted">イージング定義 JSON</label>
+              <label for="definitions" class="muted">イージング関数定義 JSON</label>
               <textarea id="definitions" spellcheck="false"></textarea>
               <div class="actions">
                 <button id="apply" type="button">JSONを反映</button>

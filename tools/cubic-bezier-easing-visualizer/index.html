@@ -1,0 +1,1124 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cubic Bezier Easing Visualizer</title>
+  <meta name="description" content="3次ベジェ曲線をヴィジュアライズします">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Zen+Maru+Gothic&display=swap');
+    :root {
+      color-scheme: dark;
+      --bg: #101827;
+      --panel: #192538;
+      --border: #34445c;
+      --text: #e8eef8;
+      --muted: #a5b5cc;
+      --accent: #76baff;
+      --button-bg: #263a55;
+      --button-border: #48617e;
+      --button-hover-bg: #355477;
+      --button-primary-bg: #2465a4;
+      --button-primary-border: #438bd0;
+      --link: #a8d5ff;
+      --link-hover: #ffffff;
+      --card-bg: #142034;
+      --color-dot-border: #9aa9c0;
+      --color-dot-fallback: #2563eb;
+      --graph-axis: #8192a8;
+      --graph-guide: #d4e4f9;
+      --graph-control-handle: #a8b7cc;
+      --graph-control-point: #f8fafc;
+      --graph-control-point-second: #fbbf84;
+      --progress-track: #0a1320;
+      --coords-text: #d5e2f4;
+      --custom-value-text: #f2f6ff;
+      --custom-match-text: #c8e5ff;
+      --success-text: #9ee9b0;
+      --export-link-hover: #d9ecff;
+      --error-text: #ffb4b4;
+      --font-base: "Zen Maru Gothic", sans-serif;
+      --font-monospace: "Roboto Mono", monospace;
+      --hue-start: 0;
+      --hue-span: 240;
+      --saturation: 50;
+      --lightness: 50;
+      --rainbow-start: hsl(0 75% 75%);
+      --rainbow-end: hsl(360 75% 75%);
+      --panel-radius: 9px;
+      --card-radius: 7px;
+      --control-radius: 5px;
+      --layout-gap: 8px;
+    }
+
+    * { box-sizing: border-box; }
+    html { font-size: 10px; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-size: 1.3rem; line-height: 1.4; font-family: var(--font-base); }
+    button, input, textarea, select { font: inherit; }
+    button { background: var(--button-bg); border: 1px solid var(--button-border); border-radius: 6px; color: var(--text); padding: 5px 9px; cursor: pointer; }
+    button:hover { background: var(--button-hover-bg); }
+    button.primary { background: var(--button-primary-bg); border-color: var(--button-primary-border); }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    input[type="number"], select, textarea { background: var(--bg); border: 1px solid var(--border); border-radius: var(--control-radius); color: var(--text); padding: 5px; }
+    input[type="number"] { width: 6em; }
+    input[type="range"] { accent-color: var(--accent); min-width: 0; }
+    main { height: 100dvh; min-height: 450px; padding: 10px 12px; }
+    h1 { margin: 0; font-size: 1.8rem; line-height: 1.3; }
+    h2 { margin: 0; font-size: 1.4rem; }
+    .panel { border: 1px solid var(--border); border-radius: var(--panel-radius); background: var(--panel); padding: 9px; min-width: 0; }
+    .panel .muted { margin-top: 8px; }
+    .playback-toolbar { margin-top: var(--layout-gap); }
+    .toolbar, .timebar, .section-heading, .preset-list { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .toolbar label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+    .timebar { margin-top: 7px; }
+    .timebar input { flex: 1; }
+    .timebar output { min-width: 80px; text-align: right; font-variant-numeric: tabular-nums; }
+    .workspace { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--layout-gap); }
+    .list-panel { display: flex; flex-direction: column; min-height: 0; }
+    .section-heading { justify-content: space-between; margin-bottom: 7px; align-items: center; }
+    .list-tools { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .list-tools details { position: relative; z-index: 2; padding: 5px 9px; }
+    .list-tools details[open] { position: static; }
+    .list-tools summary { white-space: nowrap; }
+    .list-tools details[open] { width: 100%; }
+    .list-panel:has(.list-tools details[open]) .section-heading { align-items: stretch; flex-direction: column; }
+    .list-tools:has(details[open]) { width: 100%; }
+    .list-tools details textarea { height: min(45vh, 360px); min-height: 160px; font-size: 1.2rem; }
+    .brand h1 { font-size: 1.8rem; }
+    .brand h1 a { color: inherit; text-decoration: none; }
+    .site-info { margin-top: 7px; font-size: 1.2rem; font-family: var(--font-monospace); color: var(--muted); }
+    .site-info p { margin: 8px 0 0; }
+    .brand a { color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
+    .brand a:hover { color: var(--link-hover); }
+    .brand a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .card-index { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .muted { color: var(--muted); font-size: 1.1rem; }
+    .cards-scroll { flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable; }
+    .cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; align-content: start; }
+    .cards[data-layout="one"] { grid-template-columns: minmax(0, 1fr); }
+    .cards[data-layout="two"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cards[data-layout="three"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .cards[data-layout="one"] .graph,
+    .cards[data-layout="two"] .graph,
+    .cards[data-layout="three"] .graph { height: auto; aspect-ratio: 16 / 9; }
+    .cards[data-layout="one"] .card,
+    .cards[data-layout="two"] .card,
+    .cards[data-layout="three"] .card { padding: 10px; }
+    .cards[data-layout="one"] .card .title,
+    .cards[data-layout="two"] .card .title,
+    .cards[data-layout="three"] .card .title { font-size: 1.3rem; }
+    .cards[data-layout="one"] .coords,
+    .cards[data-layout="two"] .coords,
+    .cards[data-layout="three"] .coords { font-size: 1.3rem; }
+    .card { min-width: 0; border: 1px solid var(--border); border-radius: var(--card-radius); padding: 6px; background: var(--card-bg); }
+    .card header { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+    .card .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.1rem; }
+    .card .value { flex-shrink: 0; font-weight: 600; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+    .card .readout { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 4px; font-weight: 600; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+    .color-dot { flex: 0 0 auto; width: 15px; height: 15px; border: 1px solid var(--color-dot-border); border-radius: 50%; background: var(--color-dot-fallback); }
+    .graph { display: block; width: 100%; height: 83px; background: var(--bg); border-radius: 4px; margin-top: 4px; overflow: visible; }
+    .graph .gridline { stroke: var(--border); stroke-width: .7; }
+    .graph .axis { stroke: var(--graph-axis); stroke-width: 1; }
+    .graph .curve { fill: none; stroke-width: 2.6; }
+    .graph .guide { stroke: var(--graph-guide); stroke-width: 1; stroke-dasharray: 3 3; }
+    .graph .dot { stroke: var(--text); stroke-width: 1.8; }
+    .graph .control-handle { stroke: var(--graph-control-handle); stroke-width: 1.25; stroke-dasharray: 3 2; }
+    .graph .control-point { fill: var(--graph-control-point); stroke: var(--panel); stroke-width: 1.4; }
+    .graph .control-point.second { fill: var(--graph-control-point-second); }
+    .progress-track { height: 7px; border-radius: 3px; overflow: hidden; background: var(--progress-track); margin-top: 6px; }
+    .progress-fill { width: 0; height: 100%; }
+    .coords { color: var(--coords-text); font-size: 1.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px; }
+    .sidebar { display: flex; flex-direction: column; gap: var(--layout-gap); min-height: 0; overflow: auto; }
+    .sidebar .toolbar { gap: 7px; }
+    .sidebar .toolbar label { white-space: nowrap; }
+    .sidebar .timebar { flex-wrap: nowrap; }
+    .custom-preview { margin-top: 8px; padding: 7px; border: 1px solid var(--border); border-radius: var(--card-radius); background: var(--card-bg); }
+    .custom-preview .graph { height: 132px; }
+    .preset-list { margin: 8px 0; }
+    .preset-list select { width: 100%; }
+    .sliders { display: grid; gap: 7px; margin: 10px 0; }
+    .slider-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) 40px; gap: 5px; align-items: center; }
+    .slider-row output { text-align: right; font-size: 1.1rem; }
+    .custom-value { overflow-wrap: anywhere; font-weight: 600; font-size: 1.3rem; line-height: 1.5; color: var(--custom-value-text); }
+    .custom-value span { display: inline-block; }
+    .custom-code { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
+    .custom-code .custom-value { flex: 1; min-width: 0; }
+    .custom-match { min-width: 0; margin-top: 5px; color: var(--custom-match-text); font-size: 1.2rem; font-weight: 600; overflow-wrap: anywhere; }
+    .loop-control { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+    .loop-control input { accent-color: var(--accent); }
+    .copy-status { display: block; margin-top: 4px; color: var(--success-text); font-size: 1.2rem; }
+    .export-status { margin: 0; font-size: 1.2rem; color: var(--success-text); overflow-wrap: anywhere; }
+    .export-status a { color: var(--link); text-decoration: underline; }
+    .export-status a:hover { color: var(--export-link-hover); }
+    .export-status a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+    .range-settings { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+    .range-settings label { display: inline-flex; gap: 5px; align-items: center; }
+    .color-settings { display: flex; gap: 6px; margin-top: 14px; align-items: center; flex-wrap: nowrap; min-width: 0; }
+    .color-settings label { flex: 1 1 0; min-width: 0; }
+    .color-settings label { display: inline-flex; align-items: center; gap: 5px; }
+    .color-settings input { flex: 1 1 0; width: 100%; min-width: 0; }
+    .color-settings h3 { font-size: 1.2rem; margin: 0 4px 0 0; white-space: nowrap; }
+    details { border: 1px solid var(--border); border-radius: var(--panel-radius); background: var(--panel); padding: 9px; }
+    summary { cursor: pointer; font-weight: 600; }
+    textarea { width: 100%; height: 160px; margin-top: 8px; resize: vertical; font-size: 1.1rem; line-height: 1.4; }
+    input, textarea, code, var, output { font-family: var(--font-monospace); }
+    .actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    #error { color: var(--error-text); font-size: 1.1rem; }
+    .rainbow { background: linear-gradient(45deg in hsl longer hue, var(--rainbow-start),  var(--rainbow-end)); background-clip: text; -webkit-text-fill-color: transparent; }
+    .rainbow::selection { background-color: var(--accent); color: var(--bg); -webkit-text-fill-color: var(--bg); }
+
+    @media (max-width: 1350px) { .cards { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+    @media (max-width: 1100px) { .cards { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    @media (max-width: 850px) {
+      .workspace { grid-template-columns: minmax(0, 1fr) 230px; }
+      .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (min-width: 621px) and (max-width: 950px) {
+      .cards[data-layout="three"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 620px) {
+      main { height: auto; min-height: 100dvh; }
+      .workspace { height: auto; }
+      .workspace { display: flex; flex-direction: column; }
+      .cards-scroll { overflow: visible; }
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .cards[data-layout="one"],
+      .cards[data-layout="two"],
+      .cards[data-layout="three"] { grid-template-columns: minmax(0, 1fr); }
+      .cards[data-layout="one"] .graph,
+      .cards[data-layout="two"] .graph,
+      .cards[data-layout="three"] .graph { aspect-ratio: 16 / 9; }
+      .sidebar { display: contents; }
+      .sidebar > section:first-child { order: -3; }
+      .list-panel { order: -1; }
+      .sidebar > section:nth-child(2) { order: -2; }
+      .sidebar > section:nth-child(3) { order: 0; }
+      .section-heading { flex-direction: column; align-items: stretch; }
+      .list-tools, .list-tools details { width: 100%; }
+      .list-tools details textarea { height: 240px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="workspace">
+      <section class="panel list-panel">
+        <div class="section-heading">
+          <h2 id="list-title">イージング一覧 <span id="count" class="muted"></span></h2>
+          <div class="list-tools">
+            <details id="json-editor">
+              <summary>関数一覧を編集（JSON）</summary>
+              <p class="muted"><code>{ "名前": [x1, y1, x2, y2] }</code> 形式。記述順に番号を付けて表示します。</p>
+              <label for="definitions" class="muted">イージング定義 JSON</label>
+              <textarea id="definitions" spellcheck="false"></textarea>
+              <div class="actions">
+                <button id="apply" type="button">JSONを反映</button>
+                <button id="restore" type="button">URL読み込み</button>
+                <button id="defaults" type="button">デフォルト設定</button>
+                <span id="exportStatus" class="export-status"><a id="shareUrl" href="#" target="_blank">共有URLを開く</a></span>
+              </div>
+              <p id="error"></p>
+            </details>
+          </div>
+        </div>
+        <div class="cards-scroll">
+          <div id="cards" class="cards"></div>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <section class="panel brand">
+          <h1><a href="./" class="rainbow">Cubic Bezier Easing Visualizer</a></h1>
+          <div class="site-info">
+            <p class="powered">Powered by <a href="https://cubic-bezier.lavoscore.org/"><code>cubic-bezier.lavoscore.org</code></a></p>
+            <p class="author">Author: <a href="https://x.com/debiru_R" target="_blank"><code>@debiru_R</code></a></p>
+          </div>
+        </section>
+        <section class="panel">
+          <h2>再生コントロール</h2>
+          <div class="toolbar playback-toolbar">
+            <button id="play" class="primary" type="button">▶ 再生</button>
+            <button id="pause" type="button">⏸ 一時停止</button>
+            <button id="reset" type="button">↺ リセット</button>
+            <label class="loop-control"><input id="loop" type="checkbox" checked> ループ</label>
+            <label>Duration <input id="duration" type="number" min="0.1" max="120" step="0.1" value="3"> 秒</label>
+          </div>
+          <div class="timebar">
+            <label for="time">T</label>
+            <input id="time" type="range" min="0" max="1" step="0.001" value="0">
+            <output id="timeLabel">T = 0.000</output>
+          </div>
+        </section>
+        <section class="panel">
+          <h2 id="custom-title">ベジェ関数をカスタマイズする</h2>
+          <div class="muted">プリセットを選ぶとカスタム値を上書きします</div>
+          <div id="presets" class="preset-list"></div>
+          <div class="custom-preview" id="customPreview"></div>
+          <div class="range-settings">
+            <label><var>Y最小値</var> <input id="yMin" type="number" step="0.1" value="0"></label>
+            <label><var>Y最大値</var> <input id="yMax" type="number" step="0.1" value="1"></label>
+          </div>
+          <div id="sliders" class="sliders"></div>
+          <div id="customMatch" class="custom-match"></div>
+          <div class="custom-code">
+            <output id="customValue" class="custom-value"></output>
+            <button id="copyCustom" type="button">コピー</button>
+          </div>
+          <span id="copyStatus" class="copy-status" role="status"></span>
+          <div class="color-settings">
+            <h3>HSL</h3>
+            <label>H <input id="hueStart" type="number" min="0" max="360" step="1"></label>
+            <label>S <input id="saturation" type="number" min="0" max="100" step="1"></label>
+            <label>L <input id="lightness" type="number" min="0" max="100" step="1"></label>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    'use strict';
+
+    const EASINGS = {
+      default: [0.42, 0, 0.58, 1],
+      linear: [0, 0, 1, 1],
+      ease: [0.25, 0.1, 0.25, 1],
+      'ease-in': [0.42, 0, 1, 1],
+      'ease-out': [0, 0, 0.58, 1],
+      'ease-in-out': [0.42, 0, 0.58, 1],
+      'ease-in-quad': [0.11, 0, 0.5, 0],
+      'ease-out-quad': [0.5, 1, 0.89, 1],
+      'ease-in-out-quad': [0.45, 0, 0.55, 1],
+      'ease-in-cubic': [0.32, 0, 0.67, 0],
+      'ease-out-cubic': [0.33, 1, 0.68, 1],
+      'ease-in-out-cubic': [0.65, 0, 0.35, 1],
+      'ease-in-quart': [0.5, 0, 0.75, 0],
+      'ease-out-quart': [0.25, 1, 0.5, 1],
+      'ease-in-out-quart': [0.76, 0, 0.24, 1],
+      'ease-in-quint': [0.64, 0, 0.78, 0],
+      'ease-out-quint': [0.22, 1, 0.36, 1],
+      'ease-in-out-quint': [0.83, 0, 0.17, 1],
+      'ease-in-expo': [0.7, 0, 0.84, 0],
+      'ease-out-expo': [0.16, 1, 0.3, 1],
+      'ease-in-out-expo': [0.87, 0, 0.13, 1],
+      'ease-in-sine': [0.12, 0, 0.39, 0],
+      'ease-out-sine': [0.61, 1, 0.88, 1],
+      'ease-in-out-sine': [0.37, 0, 0.63, 1],
+      'ease-in-circ': [0.55, 0, 1, 0.45],
+      'ease-out-circ': [0, 0.55, 0.45, 1],
+      'ease-in-out-circ': [0.85, 0, 0.15, 1],
+      'ease-in-back': [0.36, 0, 0.66, -0.56],
+      'ease-out-back': [0.34, 1.56, 0.64, 1],
+      'ease-in-out-back': [0.68, -0.6, 0.32, 1.6]
+    };
+
+    const $ = selector => document.querySelector(selector);
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+    const round = value => Number(value.toFixed(3));
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const colorProperties = {
+      hueStart: '--hue-start',
+      saturation: '--saturation',
+      lightness: '--lightness'
+    };
+    const defaultColors = Object.fromEntries(Object.entries(colorProperties).map(([key, property]) => [
+      key, Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue(property))
+    ]));
+    if (!Number.isFinite(defaultColors.hueStart) || defaultColors.hueStart < 0 || defaultColors.hueStart > 360 ||
+        !Number.isFinite(defaultColors.saturation) || defaultColors.saturation < 0 || defaultColors.saturation > 100 ||
+        !Number.isFinite(defaultColors.lightness) || defaultColors.lightness < 0 || defaultColors.lightness > 100) {
+      throw new Error('CSS の HSL 初期設定が不正です。');
+    }
+
+    const state = {
+      easings: { ...EASINGS },
+      custom: [...Object.values(EASINGS)[0]],
+      t: 0,
+      running: false,
+      startedAt: 0,
+      raf: 0,
+      waiting: false,
+      waitStartedAt: 0,
+      yMin: 0,
+      yMax: 1,
+      colors: { ...defaultColors }
+    };
+
+    const views = new Map();
+    let customView = null;
+
+    function bezierProgress(points, t) {
+      if (t <= 0) return 0;
+      if (t >= 1) return 1;
+
+      const [x1, y1, x2, y2] = points;
+      const cubic = (u, a, b) => {
+        const v = 1 - u;
+        return 3 * v * v * u * a + 3 * v * u * u * b + u * u * u;
+      };
+
+      let low = 0;
+      let high = 1;
+      for (let i = 0; i < 40; i++) {
+        const mid = (low + high) / 2;
+        if (cubic(mid, x1, x2) < t) low = mid;
+        else high = mid;
+      }
+      return cubic((low + high) / 2, y1, y2);
+    }
+
+    const hueSpan = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hue-span'));
+    if (!Number.isFinite(hueSpan)) throw new Error('CSS の色相変化幅が不正です。');
+
+    function progressColor(progress) {
+      const hue = ((state.colors.hueStart + hueSpan * progress) % 360 + 360) % 360;
+      return `hsl(${hue} ${state.colors.saturation}% ${state.colors.lightness}%)`;
+    }
+
+    function svgElement(tag, attributes = {}) {
+      const element = document.createElementNS(SVG_NS, tag);
+      for (const [key, value] of Object.entries(attributes)) {
+        element.setAttribute(key, String(value));
+      }
+      return element;
+    }
+
+    let graphSerial = 0;
+
+    function createGraph(name) {
+      const svg = svgElement('svg', {
+        viewBox: '0 0 160 90',
+        class: 'graph',
+        role: 'img',
+        'aria-label': `${name} の時間と進捗の曲線`
+      });
+      const x = t => 8 + 144 * t;
+      const y = p => 82 - 74 * p;
+      const gradientId = `curve-gradient-${++graphSerial}`;
+      const defs = svgElement('defs');
+      const gradient = svgElement('linearGradient', {
+        id: gradientId,
+        gradientUnits: 'userSpaceOnUse',
+        x1: 0,
+        x2: 0,
+        y1: y(0),
+        y2: y(1),
+        spreadMethod: 'pad'
+      });
+      defs.append(gradient);
+      svg.append(defs);
+
+      const grid = svgElement('g');
+      const curve = svgElement('path', { class: 'curve', stroke: `url(#${gradientId})` });
+      const guideX = svgElement('line', { class: 'guide' });
+      const guideY = svgElement('line', { class: 'guide' });
+      const dot = svgElement('circle', { r: 3.5, class: 'dot' });
+      const handles = svgElement('g');
+      if (name === 'custom') {
+        handles.append(
+          svgElement('line', { class: 'control-handle' }),
+          svgElement('line', { class: 'control-handle' }),
+          svgElement('circle', { class: 'control-point', r: 3.8 }),
+          svgElement('circle', { class: 'control-point second', r: 3.8 })
+        );
+      }
+      svg.append(grid, handles, curve, guideX, guideY, dot);
+      return { svg, grid, handles, curve, guideX, guideY, dot, gradient, gradientRange: null, x, y };
+    }
+
+    function renderGraph(graph, points, t, progress) {
+      const { grid, curve, guideX, guideY, dot, gradient, x, y } = graph;
+      const [x1, y1, x2, y2] = points;
+      grid.replaceChildren();
+
+      for (let i = 0; i <= 4; i++) {
+        const value = i / 4;
+        grid.append(svgElement('line', {
+          x1: x(value), y1: 8, x2: x(value), y2: 82, class: 'gridline'
+        }));
+      }
+      for (let i = 0; i <= 4; i++) {
+        const value = i / 4;
+        grid.append(svgElement('line', {
+          x1: 8, y1: y(value), x2: 152, y2: y(value), class: 'gridline'
+        }));
+      }
+
+      const lower = Math.min(0, y1, y2, progress, -0.25);
+      const upper = Math.max(1, y1, y2, progress, 1.25);
+      const rangeKey = `${lower}:${upper}:${state.colors.hueStart}:${state.colors.saturation}:${state.colors.lightness}`;
+      if (graph.gradientRange !== rangeKey) {
+        graph.gradientRange = rangeKey;
+        gradient.setAttribute('y1', y(lower));
+        gradient.setAttribute('y2', y(upper));
+        const stops = [];
+        for (let i = 0; i <= 100; i++) {
+          const p = lower + (upper - lower) * i / 100;
+          stops.push(svgElement('stop', {
+            offset: `${i}%`,
+            'stop-color': progressColor(p)
+          }));
+        }
+        gradient.replaceChildren(...stops);
+      }
+      curve.setAttribute('d',
+        `M ${x(0)} ${y(0)} C ${x(x1)} ${y(y1)}, ${x(x2)} ${y(y2)}, ${x(1)} ${y(1)}`
+      );
+      if (graph.handles.childElementCount) {
+        const [firstLine, secondLine, firstPoint, secondPoint] = graph.handles.children;
+        for (const [line, ax, ay, bx, by] of [
+          [firstLine, 0, 0, x1, y1],
+          [secondLine, 1, 1, x2, y2]
+        ]) {
+          line.setAttribute('x1', x(ax));
+          line.setAttribute('y1', y(ay));
+          line.setAttribute('x2', x(bx));
+          line.setAttribute('y2', y(by));
+        }
+        firstPoint.setAttribute('cx', x(x1));
+        firstPoint.setAttribute('cy', y(y1));
+        secondPoint.setAttribute('cx', x(x2));
+        secondPoint.setAttribute('cy', y(y2));
+      }
+      guideX.setAttribute('x1', x(t));
+      guideX.setAttribute('x2', x(t));
+      guideX.setAttribute('y1', y(0));
+      guideX.setAttribute('y2', y(progress));
+      guideY.setAttribute('x1', x(0));
+      guideY.setAttribute('x2', x(t));
+      guideY.setAttribute('y1', y(progress));
+      guideY.setAttribute('y2', y(progress));
+      dot.setAttribute('cx', x(t));
+      dot.setAttribute('cy', y(progress));
+      dot.setAttribute('fill', progressColor(progress));
+    }
+
+    function makeCard(name, points, index = null) {
+      const card = document.createElement('article');
+      card.className = 'card';
+      const header = document.createElement('header');
+      header.className = 'headline';
+      const title = document.createElement('b');
+      const titleValue = document.createElement('code');
+      title.className = 'title';
+      title.append(titleValue);
+      titleValue.textContent = index === null ? name : `${index}.${name}`;
+      titleValue.title = titleValue.textContent;
+      const colorDot = document.createElement('span');
+      colorDot.className = 'color-dot';
+      colorDot.title = '現在の補間色';
+      header.append(title, colorDot);
+
+      const progressLabel = document.createElement('output');
+      progressLabel.className = 'value';
+      const timeLabel = document.createElement('output');
+      timeLabel.className = 'value';
+      const readout = document.createElement('div');
+      readout.className = 'readout';
+      readout.append(timeLabel, progressLabel);
+
+      const graph = createGraph(name);
+      const track = document.createElement('div');
+      track.className = 'progress-track';
+      const fill = document.createElement('div');
+      fill.className = 'progress-fill';
+      track.append(fill);
+
+      const coordsBox = document.createElement('div');
+      coordsBox.className = 'coords';
+      const coords = document.createElement('code');
+      coordsBox.append(coords);
+
+      card.append(header, graph.svg, readout, track, coordsBox);
+      return { card, graph, fill, colorDot, coords, progressLabel, timeLabel, points };
+    }
+
+    function rebuildCards() {
+      const container = $('#cards');
+      container.replaceChildren();
+      const count = Object.keys(state.easings).length;
+      container.dataset.layout = count === 1 ? 'one' : count <= 4 ? 'two' : count <= 6 ? 'three' : 'normal';
+      views.clear();
+      for (const [index, [name, points]] of Object.entries(state.easings).entries()) {
+        const view = makeCard(name, points, index + 1);
+        container.append(view.card);
+        views.set(name, view);
+      }
+      $('#count').textContent = `(${views.size})`;
+      render();
+    }
+
+    function render() {
+      const t = state.t;
+      $('#time').value = String(t);
+      $('#timeLabel').textContent = `T = ${t.toFixed(3)}`;
+
+      for (const [name, view] of views) {
+        const points = view.points;
+        const progress = bezierProgress(points, t);
+        const color = progressColor(progress);
+        renderGraph(view.graph, points, t, progress);
+        view.progressLabel.textContent = `P ${progress.toFixed(3)}`;
+        view.timeLabel.textContent = `T ${t.toFixed(3)}`;
+        view.fill.style.width = `${clamp(progress, 0, 1) * 100}%`;
+        view.fill.style.backgroundColor = color;
+        view.colorDot.style.backgroundColor = color;
+        const value = `cubic-bezier(${points.map(round).join(', ')})`;
+        view.coords.textContent = `(${points.map(round).join(', ')})`;
+        view.coords.title = value;
+      }
+      if (customView) {
+        const progress = bezierProgress(state.custom, t);
+        const color = progressColor(progress);
+        renderGraph(customView.graph, state.custom, t, progress);
+        customView.progressLabel.textContent = `P ${progress.toFixed(3)}`;
+        customView.timeLabel.textContent = `T ${t.toFixed(3)}`;
+        customView.fill.style.width = `${clamp(progress, 0, 1) * 100}%`;
+        customView.fill.style.backgroundColor = color;
+        customView.colorDot.style.backgroundColor = color;
+        customView.coords.textContent = `cubic-bezier(${state.custom.map(round).join(', ')})`;
+      }
+    }
+
+    function stop() {
+      state.running = false;
+      state.waiting = false;
+      cancelAnimationFrame(state.raf);
+    }
+
+    function tick(now) {
+      if (!state.running) return;
+      const duration = Number($('#duration').value);
+      if (!Number.isFinite(duration) || duration <= 0) {
+        stop();
+        return;
+      }
+
+      if (state.waiting) {
+        if (now - state.waitStartedAt >= 500) {
+          state.waiting = false;
+          state.startedAt = now;
+          state.t = 0;
+        }
+      } else {
+        state.t = clamp((now - state.startedAt) / (duration * 1000), 0, 1);
+        if (state.t >= 1) {
+          if ($('#loop').checked) {
+            state.waiting = true;
+            state.waitStartedAt = now;
+          } else {
+            stop();
+          }
+        }
+      }
+      render();
+      if (state.running) state.raf = requestAnimationFrame(tick);
+    }
+
+    $('#play').addEventListener('click', () => {
+      if (!$('#duration').checkValidity()) {
+        $('#duration').reportValidity();
+        return;
+      }
+      if (state.running) return;
+      if (state.t >= 1) state.t = 0;
+      state.startedAt = performance.now() - state.t * Number($('#duration').value) * 1000;
+      state.waiting = false;
+      state.running = true;
+      state.raf = requestAnimationFrame(tick);
+    });
+
+    $('#pause').addEventListener('click', stop);
+    $('#reset').addEventListener('click', () => {
+      stop();
+      state.t = 0;
+      render();
+    });
+    $('#time').addEventListener('input', event => {
+      stop();
+      state.t = Number(event.target.value);
+      render();
+    });
+    $('#duration').addEventListener('change', () => {
+      if (state.running && !state.waiting && $('#duration').checkValidity()) {
+        state.startedAt = performance.now() - state.t * Number($('#duration').value) * 1000;
+      }
+    });
+
+    function setCustom(points) {
+      state.custom = [...points];
+      const nextMin = Math.min(state.yMin, points[1], points[3]);
+      const nextMax = Math.max(state.yMax, points[1], points[3]);
+      if (nextMin !== state.yMin || nextMax !== state.yMax) {
+        state.yMin = nextMin;
+        state.yMax = nextMax;
+        $('#yMin').value = nextMin;
+        $('#yMax').value = nextMax;
+        updateYBounds();
+      }
+      updateSliders();
+      render();
+    }
+
+    function updateCustomMatch() {
+      const matches = Object.entries(state.easings)
+        .filter(([, points]) => points.every((value, index) =>
+          Math.abs(value - state.custom[index]) < 0.000001
+        ))
+        .map(([name]) => name);
+      $('#customMatch').textContent = matches.length
+        ? `一致するイージング: ${matches.join(' / ')}`
+        : '一致するイージング: なし（カスタム）';
+    }
+
+    function updateSliders() {
+      for (const input of document.querySelectorAll('[data-coordinate]')) {
+        const index = Number(input.dataset.coordinate);
+        input.value = state.custom[index];
+        input.nextElementSibling.value = state.custom[index].toFixed(2);
+      }
+      const fname = document.createElement('span');
+      const args = document.createElement('span');
+      fname.textContent = 'cubic-bezier';
+      args.textContent = `(${state.custom.map(round).join(', ')})`;
+      $('#customValue').replaceChildren(fname, args);
+      updateCustomMatch();
+      $('#copyStatus').textContent = '';
+    }
+
+    function buildSliders() {
+      const container = $('#sliders');
+      ['x1', 'y1', 'x2', 'y2'].forEach((name, index) => {
+        const label = document.createElement('label');
+        label.className = 'slider-row';
+        const caption = document.createElement('var');
+        caption.textContent = name;
+        const input = document.createElement('input');
+        input.type = 'range';
+        input.min = index % 2 === 0 ? '0' : String(state.yMin);
+        input.max = index % 2 === 0 ? '1' : String(state.yMax);
+        input.step = '0.01';
+        input.dataset.coordinate = index;
+        const output = document.createElement('output');
+        label.append(caption, input, output);
+        container.append(label);
+        input.addEventListener('input', () => {
+          state.custom[index] = Number(input.value);
+          updateSliders();
+          render();
+        });
+      });
+      updateSliders();
+    }
+
+    function buildPresets() {
+      const container = $('#presets');
+      container.replaceChildren();
+      const select = document.createElement('select');
+      select.id = 'presetSelect';
+      const presetLabel = document.createElement('label');
+      presetLabel.htmlFor = 'presetSelect';
+      presetLabel.textContent = 'カスタムに適用するプリセット';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'プリセットを選択…';
+      select.append(placeholder);
+      for (const [index, name] of Object.keys(state.easings).entries()) {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = `${index + 1}. ${name}`;
+        select.append(option);
+      }
+      select.addEventListener('change', () => {
+        if (select.value) setCustom(state.easings[select.value]);
+        select.value = '';
+      });
+      container.append(presetLabel, select);
+    }
+
+    function updateYBounds() {
+      for (const input of document.querySelectorAll('[data-coordinate]')) {
+        const index = Number(input.dataset.coordinate);
+        if (index % 2 === 1) {
+          input.min = String(state.yMin);
+          input.max = String(state.yMax);
+        }
+      }
+      updateSliders();
+      render();
+    }
+
+    function setYBounds() {
+      const min = Number($('#yMin').value);
+      const max = Number($('#yMax').value);
+      if (!Number.isFinite(min) || !Number.isFinite(max) || min >= max) {
+        $('#yMin').setCustomValidity('Y 最小は Y 最大より小さくしてください。');
+        $('#yMin').reportValidity();
+        return;
+      }
+      $('#yMin').setCustomValidity('');
+      state.yMin = min;
+      state.yMax = max;
+      state.custom[1] = clamp(state.custom[1], min, max);
+      state.custom[3] = clamp(state.custom[3], min, max);
+      updateYBounds();
+    }
+
+    $('#yMin').addEventListener('change', setYBounds);
+    $('#yMax').addEventListener('change', setYBounds);
+    $('#copyCustom').addEventListener('click', async () => {
+      const copied = await copyText($('#customValue').textContent);
+      $('#copyStatus').textContent = copied ? 'コピーしました' : 'コピーできませんでした';
+    });
+
+    function validateEasings(value) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        throw new Error('JSON オブジェクトを指定してください。');
+      }
+      const entries = Object.entries(value);
+      if (entries.length === 0) throw new Error('少なくとも1つの関数が必要です。');
+      for (const [name, points] of entries) {
+        if (!Array.isArray(points) || points.length !== 4 ||
+            !points.every(n => typeof n === 'number' && Number.isFinite(n))) {
+          throw new Error(`${name}: 4つの有限数値を指定してください。`);
+        }
+        if (points[0] < 0 || points[0] > 1 || points[2] < 0 || points[2] > 1) {
+          throw new Error(`${name}: x1, x2 は 0〜1 にしてください。`);
+        }
+      }
+      return value;
+    }
+
+    function formatDefinitions(easings) {
+      const entries = Object.entries(easings).map(([name, points]) =>
+        `  ${JSON.stringify(name)}: ${JSON.stringify(points)}`
+      );
+      return `{\n${entries.join(',\n')}\n}`;
+    }
+
+    const draftKey = `easing-visualizer:draft:${location.pathname}`;
+
+    function saveDraft() {
+      try {
+        localStorage.setItem(draftKey, $('#definitions').value);
+      } catch (error) {
+      }
+    }
+
+    function clearDraft() {
+      try {
+        localStorage.removeItem(draftKey);
+      } catch (error) {
+      }
+    }
+
+    function restoreDraftOnLoad() {
+      try {
+        const draft = localStorage.getItem(draftKey);
+        if (draft !== null) $('#definitions').value = draft;
+      } catch (error) {
+      }
+    }
+
+    function resetSettings(settings) {
+      const target = formatDefinitions(settings.easings);
+      const applied = formatDefinitions(state.easings);
+      const hasUnappliedEdits = $('#definitions').value !== applied;
+      if (hasUnappliedEdits && $('#definitions').value !== target &&
+          !window.confirm('編集内容が失われますがよろしいですか？')) return;
+      setEasings({ ...settings.easings });
+      setColors(settings.colors);
+      clearDraft();
+    }
+
+    function setEasings(value) {
+      state.easings = validateEasings(value);
+      $('#definitions').value = formatDefinitions(state.easings);
+      $('#error').textContent = '';
+      buildPresets();
+      rebuildCards();
+      updateCustomMatch();
+      updateShareUrl();
+    }
+
+    function jsonApply() {
+      try {
+        setEasings(JSON.parse($('#definitions').value));
+        clearDraft();
+      } catch (error) {
+        $('#error').textContent = error.message;
+        return;
+      }
+      replaceUrlWithShareUrl();
+    }
+
+    const jsonEditor = $('#json-editor');
+    document.addEventListener('click', (event) => {
+      if (!jsonEditor.contains(event.target)) {
+        jsonEditor.open = false;
+      }
+    });
+
+    $('#definitions').addEventListener('input', saveDraft);
+    $('#definitions').addEventListener('blur', jsonApply);
+
+    $('#apply').addEventListener('click', jsonApply);
+
+    $('#restore').addEventListener('click', () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const settings = {
+          easings: importParameters(params),
+          colors: importColors(params)
+        };
+        resetSettings(settings);
+      } catch (error) {
+        $('#error').textContent = `URL の設定を読み込めませんでした: ${error.message}`;
+      }
+    });
+    $('#defaults').addEventListener('click', () => resetSettings({
+      easings: EASINGS,
+      colors: defaultColors
+    }));
+
+    const defaultNames = Object.keys(EASINGS);
+    const defaultIndex = new Map(defaultNames.map((name, index) => [name, index]));
+    const defaultMask = (1n << BigInt(defaultNames.length)) - 1n;
+
+    function samePoints(a, b) {
+      return a.length === b.length && a.every((value, index) => value === b[index]);
+    }
+
+    function exportParameters(easings) {
+      const custom = {};
+      const customKeys = [];
+      let use = 0n;
+      const sequence = [];
+
+      for (const [name, points] of Object.entries(easings)) {
+        const id = defaultIndex.get(name);
+        if (id !== undefined && samePoints(points, EASINGS[name])) {
+          use |= 1n << BigInt(id);
+          sequence.push(['d', id]);
+        } else {
+          const index = customKeys.length;
+          customKeys.push(name);
+          Object.defineProperty(custom, name, {
+            value: points, enumerable: true, writable: true, configurable: true
+          });
+          sequence.push(['j', index]);
+        }
+      }
+
+      const defaults = defaultNames.flatMap((name, id) =>
+        (use & (1n << BigInt(id))) !== 0n ? [['d', id]] : []
+      );
+      const canonical = [
+        ...defaults,
+        ...customKeys.map((_, id) => ['j', id])
+      ];
+      const params = new URLSearchParams();
+      if (use !== defaultMask) params.set('use', use.toString(16));
+      if (customKeys.length) params.set('json', JSON.stringify(custom));
+      if (sequence.some(([kind, id], index) =>
+        kind !== canonical[index][0] || id !== canonical[index][1]
+      )) {
+        const runs = [];
+        for (let i = 0; i < sequence.length;) {
+          const [kind, start] = sequence[i];
+          let step = 1;
+          if (i + 1 < sequence.length && sequence[i + 1][0] === kind &&
+              Math.abs(sequence[i + 1][1] - start) === 1) {
+            step = sequence[i + 1][1] - start;
+          }
+          let length = 1;
+          while (i + length < sequence.length &&
+                 sequence[i + length][0] === kind &&
+                 sequence[i + length][1] === start + step * length) {
+            length++;
+          }
+          runs.push({ kind, start, length, reverse: step === -1 && length > 1 });
+          i += length;
+        }
+        params.set('order', runs.map(({ kind, start, length, reverse }) =>
+          `${kind === 'd' ? '_' : ''}${start.toString(36)}-${reverse ? '0' : ''}${length.toString(36)}`
+        ).join(','));
+      }
+      for (const [key, param] of [['hueStart', 'h'], ['saturation', 's'], ['lightness', 'l']]) {
+        if (state.colors[key] !== defaultColors[key]) params.set(param, String(state.colors[key]));
+      }
+      return params;
+    }
+
+    function importColors(params) {
+      const colors = { ...defaultColors };
+      for (const [key, param, min, max] of [
+        ['hueStart', 'h', 0, 360],
+        ['saturation', 's', 0, 100],
+        ['lightness', 'l', 0, 100]
+      ]) {
+        if (!params.has(param)) continue;
+        const raw = params.get(param);
+        const value = Number(raw);
+        if (!raw.trim() || !Number.isFinite(value) || value < min || value > max) {
+          throw new Error(`URL の ${param} パラメータが不正です。`);
+        }
+        colors[key] = value;
+      }
+      return colors;
+    }
+
+    function setColors(colors) {
+      state.colors = { ...colors };
+      for (const [key, property] of Object.entries(colorProperties)) {
+        document.documentElement.style.setProperty(property, String(colors[key]));
+        $(`#${key}`).value = String(colors[key]);
+      }
+      render();
+      updateShareUrl();
+    }
+
+    for (const [key, min, max] of [
+      ['hueStart', 0, 360], ['saturation', 0, 100], ['lightness', 0, 100]
+    ]) {
+      $(`#${key}`).addEventListener('input', event => {
+        if (!event.target.checkValidity() || event.target.value.trim() === '') return;
+        const value = Number(event.target.value);
+        if (!Number.isFinite(value) || value < min || value > max) return;
+        state.colors[key] = value;
+        document.documentElement.style.setProperty(colorProperties[key], String(value));
+        render();
+        updateShareUrl();
+        replaceUrlWithShareUrl();
+      });
+    }
+
+    function importParameters(params) {
+      const rawUse = params.get('use');
+      if (rawUse !== null && !/^[0-9a-f]{1,8}$/i.test(rawUse)) {
+        throw new Error('URL の use パラメータが不正です。');
+      }
+      const use = rawUse === null ? defaultMask : BigInt(`0x${rawUse}`);
+      if ((use & ~defaultMask) !== 0n) {
+        throw new Error('URL の use に未定義の関数が含まれています。');
+      }
+
+      const custom = params.has('json') ? JSON.parse(params.get('json')) : {};
+      if (custom === null || typeof custom !== 'object' || Array.isArray(custom)) {
+        throw new Error('URL の json パラメータはオブジェクトで指定してください。');
+      }
+      if (Object.keys(custom).length) validateEasings(custom);
+      const customEntries = Object.entries(custom);
+      const defaults = defaultNames.flatMap((name, id) =>
+        (use & (1n << BigInt(id))) !== 0n ? [[name, EASINGS[name], id]] : []
+      );
+      for (const [name] of customEntries) {
+        if (defaults.some(([defaultName]) => defaultName === name)) {
+          throw new Error(`URL で ${name} が重複しています。`);
+        }
+      }
+
+      const chosen = [];
+      if (params.has('order')) {
+        const tokens = params.get('order').split(',');
+        const tokenPattern = /^(_?)(0|[1-9a-z][0-9a-z]*)-(0[1-9a-z][0-9a-z]*|[1-9a-z][0-9a-z]*)$/;
+        if (!tokens.length || tokens.some(token => !tokenPattern.test(token))) {
+          throw new Error('URL の order パラメータが不正です。');
+        }
+        const usedDefaults = new Set();
+        const usedCustom = new Set();
+        for (const token of tokens) {
+          const [, prefix, startText, countText] = token.match(tokenPattern);
+          const kind = prefix === '_' ? 'd' : 'j';
+          const reverse = countText.startsWith('0');
+          const start = Number.parseInt(startText, 36);
+          const length = Number.parseInt(reverse ? countText.slice(1) : countText, 36);
+          if (!Number.isSafeInteger(start) || !Number.isSafeInteger(length) || length < 1 ||
+              start < 0 || length > defaultNames.length + customEntries.length) {
+            throw new Error('URL の order パラメータが不正です。');
+          }
+          for (let offset = 0; offset < length; offset++) {
+            const i = start + (reverse ? -offset : offset);
+            if (kind === 'd') {
+              if (i < 0 || i >= defaultNames.length || (use & (1n << BigInt(i))) === 0n || usedDefaults.has(i)) {
+                throw new Error('URL の order に無効・重複したデフォルト ID があります。');
+              }
+              usedDefaults.add(i);
+              chosen.push([defaultNames[i], EASINGS[defaultNames[i]]]);
+            } else {
+              if (i < 0 || !customEntries[i] || usedCustom.has(i)) {
+                throw new Error('URL の order に無効・重複した独自関数 ID があります。');
+              }
+              usedCustom.add(i);
+              chosen.push(customEntries[i]);
+            }
+          }
+        }
+        if (usedDefaults.size !== defaults.length || usedCustom.size !== customEntries.length) {
+          throw new Error('URL の order で指定された関数に過不足があります。');
+        }
+      } else {
+        chosen.push(...defaults.map(([name, points]) => [name, points]), ...customEntries);
+      }
+      return validateEasings(Object.fromEntries(chosen));
+    }
+
+    async function copyText(value) {
+      try {
+        await navigator.clipboard.writeText(value);
+        return true;
+      } catch (error) {
+        const field = document.createElement('textarea');
+        field.value = value;
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        document.body.append(field);
+        field.select();
+        let copied = false;
+        try {
+          copied = document.execCommand('copy');
+        } finally {
+          field.remove();
+        }
+        return copied;
+      }
+    }
+
+    function replaceUrlWithShareUrl() {
+      const url = $('#shareUrl').href;
+      if (url === window.location.href) return;
+      try {
+        window.history.replaceState(null, '', url);
+      } catch (error) {
+        $('#error').textContent = `設定は反映しましたが、URLを更新できませんでした: ${error.message}`;
+      }
+    }
+
+    function updateShareUrl() {
+      const link = $('#shareUrl');
+      const url = new URL(window.location.href);
+      for (const key of ['use', 'json', 'order', 'h', 's', 'l']) url.searchParams.delete(key);
+      for (const [key, value] of exportParameters(state.easings)) {
+        url.searchParams.set(key, value);
+      }
+      link.href = url.href;
+    }
+
+    customView = makeCard('custom', state.custom);
+    $('#customPreview').append(customView.card);
+    buildSliders();
+    setColors(defaultColors);
+    try {
+      const params = new URLSearchParams(window.location.search);
+      setColors(importColors(params));
+      setEasings(importParameters(params));
+    } catch (error) {
+      setEasings({ ...EASINGS });
+      $('#error').textContent = `URL の設定を読み込めませんでした: ${error.message}`;
+      jsonEditor.open = true;
+    }
+    restoreDraftOnLoad();
+    setCustom(Object.values(state.easings)[0]);
+  </script>
+</body>
+</html>
